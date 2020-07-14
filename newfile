@@ -1,0 +1,1878 @@
+package com.mdc.tankoon.nurse.screen.tab4.screen.telemedicien
+
+import android.app.Activity
+import android.app.DatePickerDialog
+import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
+import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
+import android.util.Log
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
+import android.widget.*
+
+import com.bumptech.glide.Glide
+import com.mdc.tankoon.nurse.connections.APIService
+import com.mdc.tankoon.nurse.dialog.DialogBase
+import com.mdc.tankoon.nurse.R
+import com.mdc.tankoon.nurse.model.*
+import com.mdc.tankoon.nurse.msg.MsgProperties
+import com.mdc.tankoon.nurse.util.*
+import com.mdc.tankoon.nurse.util.sharepreferrent.ConfigServer
+import com.mdc.tankoon.nurse.util.sharepreferrent.ConfigShare
+import kotlinx.android.synthetic.main.progress_simple.*
+import kotlinx.android.synthetic.main.toolbar_menu.*
+import kotlinx.android.synthetic.main.view_buttom_camera.*
+
+import okhttp3.ResponseBody
+import org.json.JSONArray
+import retrofit2.Response
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.ArrayList
+import com.google.gson.Gson
+import com.mdc.tankoon.nurse.model.mockup.Aptitde
+import com.mdc.tankoon.nurse.screen.tab4.screen.telemedicienviewmodel.TeleRegisterViewModel
+import com.mdc.tankoon.nurse.screen.tab5.sub_src.PackageScreen
+import kotlinx.android.synthetic.main.sc_regsiter_doc.*
+import okhttp3.MediaType
+import okhttp3.RequestBody
+import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import java.io.File
+import kotlin.collections.HashMap
+
+
+class TeleRegisterScreen : ScreenUnit() {
+
+    val TAG = TeleRegisterScreen::class.java.simpleName
+    lateinit var rootView: View
+
+    lateinit var dialog: DialogBase
+    private val PLACE_PICKER_REQUEST = 1
+    private val CAMERA = 100
+    private val GELLARY = 200
+
+    var yearPick = 1990
+    var monthPick = 1
+    var dayPick = 1
+    var datePick = ""
+
+    var arrSex = ArrayList<DataSex>()
+    var secretProvinceArrayList = ArrayList<BodyProvince>()
+    var secretProvince = ArrayList<String>()
+    var IdProvince = 0
+    var IdSex = 0
+    //var model: AccountDetailBody? = null
+    var lat = ""
+    var lng = ""
+    var imgBaseProfile: Bitmap? = null
+    var imgBaseCer: Bitmap? = null
+
+    //    var hosProviceId = 0
+//    var Idhospital = 0
+    var IdPackage = JSONArray()
+    var aptitudeeID = -1
+    var careerID = -1
+    var companyID = 0
+    var companyFlag = 0
+    //    var IdUniversity = 0
+    // var arrAptitudeString = ArrayList<String>()
+    var arrCareerString = ArrayList<String>()
+    var idResPicture = 0
+    lateinit var callBackLoadFinish: (() -> Unit)
+    var uriSavedImageProfile: Uri? = null
+    var uriSavedImageCertificate: Uri? = null
+
+    var timeonGellaryProfile: String? = null
+    var timeonGellaryCertificate: String? = null
+    var isUpdate = false
+    var arrPackageId = ArrayList<Int>()
+    var imgstring = ""
+    var arrLictCompanyString = ArrayList<String>()
+    var accountDetailBody: AccountDetailBody? = null
+    var flag_consultant: Int? = 0
+    var flag_servise: Int? = 0
+    var chekAptitude: Boolean? = false
+    var chekcompany: Boolean? = false
+
+    var invoker: ((String) -> Unit)? = null
+    var arrAptitude: ArrayList<Aptitde>? = null
+
+
+    private val viewModel: TeleRegisterViewModel by sharedViewModel()
+
+
+    companion object {
+        fun newInstance(model: AccountDetailBody?, isUpdate: Boolean): TeleRegisterScreen {
+            val fragment = TeleRegisterScreen()
+            val args = Bundle()
+            args.putSerializable(MsgProperties.MODEL, model)
+            args.putBoolean(MsgProperties.FLAG, isUpdate)
+
+            fragment.setArguments(args)
+            return fragment
+        }
+
+        fun newInstance(isUpdate: String): TeleRegisterScreen {
+            val fragment = TeleRegisterScreen()
+            val args = Bundle()
+            args.putString(MsgProperties.MODEL, isUpdate)
+            // args.putBoolean(MsgProperties.FLAG, isUpdate)
+
+            fragment.setArguments(args)
+            return fragment
+        }
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setFrangment(TeleRegisterScreen::class.simpleName.toString(), rootView)
+
+//        if (arguments?.getSerializable(MsgProperties.MODEL) != null)
+//            model = arguments?.getSerializable(MsgProperties.MODEL) as AccountDetailBody
+//        arguments?.getBoolean(MsgProperties.FLAG)?.let {
+//            isUpdate = it
+//        }
+
+        setValue()
+
+
+    }
+
+
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+        // viewModel = ViewModelProviders.of(this).get(TeleRegisterViewModel::class.java)
+        //  viewModel = ViewModelProviders.of(this).get(TeleRegisterViewModel::class.java)
+
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        rootView = inflater?.inflate(R.layout.sc_regsiter_doc, container, false)
+        return rootView
+    }
+
+    override fun onResume() {
+        super.onResume()
+    }
+
+    override fun onStart() {
+        super.onStart()
+
+    }
+
+    override fun onStop() {
+
+        super.onStop()
+    }
+
+    private fun setValue() {
+        dialog = DialogBase(context)
+
+        setComponent()
+    }
+
+    var packageScreen = PackageScreen()
+    private fun setComponent() {
+//        onProgress.visibility = View.VISIBLE
+
+
+        arrCareerString = ArrayList<String>()
+
+
+        initAccountDetail()
+
+
+
+
+        tvPacket.setOnClickListener({
+            packageScreen = PackageScreen.newInstance(arrPackageId)
+            IntentFragment(packageScreen.apply {
+
+                callBackArrPakage = { arr ->
+                    var countFlag = 0
+                    IdPackage = JSONArray()
+                    arr.forEach { model ->
+
+                        if (model.flagClick) {
+                            countFlag++
+                            IdPackage.put(model.id)
+                        }
+
+                    }
+
+
+                    if (countFlag == 0) {
+                        this@TeleRegisterScreen.tvPacket.text = ""
+                        this@TeleRegisterScreen.tvPacket.hint = getString(R.string.select_package)
+                    } else {
+                        this@TeleRegisterScreen.tvPacket.text = getString(R.string.select) + " $countFlag " + getString(R.string.title_package)
+                    }
+
+                }
+            })
+        })
+
+        if (isUpdate)
+        //setObj(model)
+
+            edtTel.setText(ConfigShare.getShareConfig(ConfigShare.phoneNumber) as String)
+        edtTel.isEnabled = false
+        /**
+         * Onclick
+         */
+        ic_back.setOnClickListener {
+            goback(false)
+        }
+        toolbar_title.text = getString(R.string.title_profile_sc)
+        toolbar_menu.text = getString(R.string.submit)
+        toolbar_menu.setOnClickListener({
+
+
+            Log.e("aptitudeeID", aptitudeeID.toString())
+            var json = innitJsonRegister()
+            json?.let { jsonData ->
+                onUpdateAccountAPI(jsonData)
+            }
+//            goback(false);
+            KeyboardUtil.hideSoftKeyboard(activity)
+        })
+
+        /**
+         * Certificate Animation
+         */
+        tvCertificateProfile.setOnFocusChangeListener({ v, hasFocus ->
+            if (hasFocus) {
+                v.performClick()
+            }
+        })
+
+        imgProfile.setOnClickListener({
+            viewBg.visibility = View.VISIBLE
+            viewTabCamera.startAnimation(AnimationUtils.loadAnimation(context, R.anim.move_up_tab))
+            viewTabCamera.visibility = View.VISIBLE
+            animateCamera(it.id)
+
+        })
+        tvCertificateProfile.setOnClickListener({
+            viewBg.visibility = View.VISIBLE
+            viewTabCamera.startAnimation(AnimationUtils.loadAnimation(context, R.anim.move_up_tab))
+            viewTabCamera.visibility = View.VISIBLE
+            animateCamera(it.id)
+        })
+
+//
+//        if(checkBoxConsultant.isChecked()){
+//            flag_consultant = 1
+//            Log.e("flag_consultant 1", flag_consultant.toString())
+//        }
+//        if(!checkBoxConsultant.isChecked()){
+//            flag_consultant = 0
+//
+//            Log.e("flag_consultant 0", flag_consultant.toString())
+//        }
+
+
+        //checkbox event handling
+        checkBoxConsultant.setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+
+            if (isChecked) {
+                Log.e("isChecked", isChecked.toString())
+
+                accountDetailBody?.flag_consultant = 1
+                checkBoxConsultant.setButtonDrawable(null);
+                checkBoxConsultant.setBackgroundResource(R.drawable.ic_circle_true)
+
+                // Toast.makeText(context, "check ", Toast.LENGTH_LONG).show();
+            } else {
+
+                Log.e("! isChecked", isChecked.toString())
+                accountDetailBody?.flag_consultant = 0
+                // Toast.makeText(context, "Uncheck ", Toast.LENGTH_LONG).show();
+                checkBoxConsultant.setButtonDrawable(null);
+                checkBoxConsultant.setBackgroundResource(R.drawable.ic_circle_false)
+
+            }
+        }
+
+        checkboxServise.setOnCheckedChangeListener { _: CompoundButton, isChecked: Boolean ->
+
+            if (accountDetailBody?.companyID == 0) {
+
+                accountDetailBody?.company_flag = 0
+
+                DialogBase(context).DialogSimple("แจ้งเตือน", getString(R.string.error_company_flag), object : DialogBase.OnClickDialogSimple {
+                    override fun onClickOK() {
+
+                    }
+
+                })
+            } else {
+                if (isChecked) {
+                    accountDetailBody?.company_flag = 1
+                    checkboxServise.setButtonDrawable(null);
+                    checkboxServise.setBackgroundResource(R.drawable.ic_circle_true)
+
+                } else {
+                    flag_servise = 0
+                    accountDetailBody?.company_flag = 0
+                    checkboxServise.setButtonDrawable(null);
+                    checkboxServise.setBackgroundResource(R.drawable.ic_circle_false)
+
+                }
+            }
+
+
+        }
+    }
+
+
+    private fun initAccountDetail() {
+        showProgressbar()
+        viewModel.requesAccountDetailModelViewmodel()
+        viewModel.accountDetailModel.observe(viewLifecycleOwner, androidx.lifecycle.Observer {
+
+            var res = it.head
+            var errorCode = Integer.parseInt(res!!.errorCode)
+
+            when (errorCode) {
+                0 -> {
+
+                    hideProgressbar()
+                    accountDetailBody = it.body
+                    Log.e("accountDetailBody", accountDetailBody.toString())
+                    //  Log.d("tab5", "----->1: ${accountDetailBody?.body?.accountId}")
+
+                    setObjAccount(accountDetailBody!!)
+                    initProvince()
+                    initDob()
+////        initHospitalProvince()
+////        initUniversity()
+                    initCareer()
+                    initListCompany()
+
+                }
+                else -> {
+                    hideProgressbar()
+                    dialog?.DialogSimple("แจ้งเตือน", getString(R.string.error_api43), object : DialogBase.OnClickDialogSimple {
+                        override fun onClickOK() {
+
+                        }
+                    })
+                }
+
+
+            }
+        })
+
+
+        viewModel.error.observe(viewLifecycleOwner, androidx.lifecycle.Observer {
+
+            hideProgressbar()
+            dialog?.DialogSimple("แจ้งเตือน", getString(R.string.error_api44), object : DialogBase.OnClickDialogSimple {
+                override fun onClickOK() {
+
+
+                }
+            })
+        })
+    }
+
+    fun setObjAccount(model: AccountDetailBody?) {
+        model?.let {
+
+            it.name?.let { name ->
+                edtName.setText(name)
+            }
+
+            it.surename?.let { surename ->
+                edtLastName.setText(surename)
+            }
+
+            it.idCard?.let { idCard ->
+                edtCardId.setText(idCard)
+            }
+
+
+            /**
+             * Province
+             */
+            model?.provinceNameTh?.let { provinceNameTh ->
+                spnProvince.setSelection(secretProvince.indexOf(provinceNameTh))
+            }
+            model?.provinceId?.let { id ->
+                IdProvince = id
+            }
+            spnProvince.setOnItemSelectedListener(
+                    object : AdapterView.OnItemSelectedListener {
+                        override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+                            if (position > 0) {
+                                IdProvince = secretProvinceArrayList!![position - 1].provinceId
+                            } else {
+                                IdProvince = 0
+                            }
+
+                        }
+
+                        override fun onNothingSelected(p0: AdapterView<*>?) {
+
+
+                        }
+
+                    })
+
+
+            /**
+             * Career
+             */
+            model?.career_name?.let { careerName ->
+                spnCareer.setSelection(arrCareerString.indexOf(careerName))
+            }
+            model?.careerId?.let { id ->
+                careerID = id
+            }
+
+
+            /**
+             * aptitude
+             */
+//            model?.aptitudeName?.let { aptitudeName ->
+//                spnAptitude.setSelection(arrAptitudeString.indexOf(aptitudeName))
+//            }
+            model?.career_aptitude_id?.let { idData ->
+                chekAptitude = false
+                aptitudeeID = idData
+                Log.e("model aptitudeeID", aptitudeeID.toString())
+                //spnAptitude.setSelection(1)
+            }
+
+            model?.nameCompany?.let { nameCompany ->
+                spnPartner.setSelection(arrLictCompanyString.indexOf(nameCompany))
+            }
+
+            model?.companyID.let {
+
+                chekcompany = false
+                companyID = it!!
+            }
+
+
+
+
+            it.birthday?.let { birthday ->
+                if (!birthday.isEmpty()) {
+                    txtDobProfile.text = (DateUtil.convertDateFormatformServer(birthday))
+                } else {
+                    txtDobProfile.hint = getString(R.string.birth)
+                }
+
+                it.pictureName?.let { imagePath ->
+                    if (imagePath.isEmpty()) {
+                        imgBaseProfile = null
+
+                        imgProfile.setImageDrawable(ContextCompat.getDrawable(this.context!!, R.drawable.ic_add_profile))
+                    } else {
+                        UpdateLogic(Runnable {
+                            imgBaseProfile = ImageUtil.BitMapformUrl(ConfigServer.instance.accountProfilePathImage + imagePath, this.context!!)
+
+                        })
+
+                        Glide.with(this.context!!).load(ConfigServer.instance.accountProfilePathImage + imagePath)
+                                .apply(ImageUtil.getImageCirclePersonnalProfile())
+                                .into(imgProfile)
+                    }
+
+                }
+
+            }
+
+            it.place_woking?.let { placeWoking ->
+                edtLocton.setText(placeWoking)
+            }
+
+
+
+            it.description?.let { description ->
+                edtComment.setText(description)
+            }
+
+            it.phoneNo?.let { phoneNo ->
+                edtTel.setText(phoneNo)
+            }
+
+//            it?.nameCompany?.let { nameCompany ->
+//                spnPartner.setSelection(arrLictCompanyString.indexOf(nameCompany))
+//            }
+
+//            it.companyID?.let {
+//
+//                spnPartner.setSelection(it)
+//            }
+
+
+            it?.consultant_detail?.let { consultantDetail ->
+                edtAptituDetail.setText(consultantDetail)
+            }
+
+
+
+            it?.flag_consultant?.let { flag_consultant ->
+
+                if (flag_consultant == 1) {
+
+
+                    checkBoxConsultant.setBackgroundResource(R.drawable.ic_circle_true)
+                    checkBoxConsultant.setButtonDrawable(R.drawable.checkbox_custom)
+                } else {
+
+
+                    checkBoxConsultant.setBackgroundResource(R.drawable.ic_circle_false)
+                }
+            }
+
+            it?.company_flag?.let { company_flag ->
+
+                if (company_flag == 1) {
+
+                    checkboxServise.setBackgroundResource(R.drawable.ic_circle_true)
+                } else {
+                    checkboxServise.setBackgroundResource(R.drawable.ic_circle_false)
+                }
+            }
+
+
+            /*
+              it.packageId?.let { listPackageId ->
+                  IdPackage = JSONArray(listPackageId)
+              }
+
+
+
+
+
+
+              it.pictureCert?.let { picture ->
+                  UpdateLogic {
+                      imgBaseCer = ImageUtil.BitMapformUrl(ConfigServer.instance.certNursePath + picture, context)
+                      UpdateUI {
+                          enableTextFileCer(imgBaseCer ?: ImageUtil.DefaultBitmapNotImage(context))
+                      }
+                  }
+
+              }
+
+              it.packageId?.let { arrPackage ->
+                  arrPackageId = arrPackage
+                  if (arrPackage.size == 0) {
+                      this.tvPacket.text = ""
+                      this.tvPacket.hint = getString(R.string.select_package)
+                  } else {
+                      this.tvPacket.text = getString(R.string.select) + " ${arrPackage.size} " + getString(R.string.title_package)
+                  }
+
+
+              }*/
+
+
+        }
+    }
+
+    private fun animateCamera(viewId: Int) {
+        idResPicture = viewId
+
+        viewCamera.setOnClickListener {
+            viewBg.performClick()
+            mapPermissionCemara(idResPicture)
+        }
+        viewGallery.setOnClickListener {
+            viewBg.performClick()
+            onGellary(idResPicture)
+        }
+
+
+        viewBg.setOnClickListener({
+            if (viewBg.visibility == View.VISIBLE) {
+
+                var animHide = AnimationUtils.loadAnimation(context, R.anim.move_down_tab)
+
+                animHide.setAnimationListener(object : Animation.AnimationListener {
+                    override fun onAnimationRepeat(p0: Animation?) {
+
+                    }
+
+                    override fun onAnimationStart(p0: Animation?) {
+
+                    }
+
+                    override fun onAnimationEnd(p0: Animation?) {
+                        viewBg.visibility = View.GONE
+
+
+                    }
+                })
+                if (viewTabCamera.visibility == View.VISIBLE) {
+                    viewTabCamera.startAnimation(animHide)
+                    viewTabCamera.visibility = View.GONE
+                }
+                /**
+                 * First Click not enable
+                 */
+
+
+            }
+        })
+    }
+
+    fun mapPermissionCemara(idResPicture: Int) {
+        var permission = Permission()
+        permission.requestPermission(activityMain, object : Permission.CallBackPermission {
+            override fun allowPermission() {
+                onTakePhoto(idResPicture)
+            }
+
+            override fun deninePermissiob() {
+                Toast.makeText(context, "Permission denied, can't enable ",
+                        Toast.LENGTH_SHORT).show();
+            }
+
+        }, android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                , android.Manifest.permission.READ_EXTERNAL_STORAGE
+                , android.Manifest.permission.CAMERA)
+
+    }
+
+    fun onTakePhoto(idResPicture: Int) {
+
+        val timeStamp = SimpleDateFormat("yyyyHHmmss").format(Date())
+        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        val root = Environment.getExternalStorageDirectory().absolutePath + "/"
+        val photo = File(root + "tankoon_nu" + File.separator)
+        if (!photo.exists()) {
+            photo.mkdir()
+        }
+        val image = File(photo, "$timeStamp.jpg")
+        imgstring = image.toString()
+//        var setPhoto = "$timeStamp.jpg"
+//        var strPhoto = setPhoto//ตั้งชื่อให้รูปเพื่อลบ
+
+        when (idResPicture) {
+            imgProfile.id -> {
+                uriSavedImageProfile = FileProvider.getUriForFile(activity!!, "com.mdc.tankoon.nurse.provider", image)
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, uriSavedImageProfile)
+                startActivityForResult(intent, CAMERA)
+            }
+
+            tvCertificateProfile.id -> {
+                uriSavedImageCertificate = FileProvider.getUriForFile(activity!!, "com.mdc.tankoon.nurse.provider", image)
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, uriSavedImageCertificate)
+                startActivityForResult(intent, CAMERA)
+            }
+        }
+
+
+    }
+
+    private fun onGellary(idResPicture: Int) {
+        val intent = Intent(Intent.ACTION_GET_CONTENT)
+        intent.type = "image/*"
+//        var timeonGellary
+        //        setPhoto = timeonGellary + ".jpg";
+//        var setPhoto = timeonGellary + ".jpg"
+//        var strPhoto = setPhoto//ตั้งชื่อให้รูปเพื่อลบ
+        when (idResPicture) {
+            imgProfile.id -> {
+                timeonGellaryProfile = SimpleDateFormat("yyyyHHmmss").format(Date())
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, timeonGellaryProfile)
+                startActivityForResult(Intent.createChooser(intent, "Select photo from"), GELLARY)
+
+            }
+
+            tvCertificateProfile.id -> {
+                timeonGellaryCertificate = SimpleDateFormat("yyyyHHmmss").format(Date())
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, timeonGellaryProfile)
+                startActivityForResult(Intent.createChooser(intent, "Select photo from"), GELLARY)
+
+            }
+        }
+
+
+    }
+
+
+//    private fun initHospitalProvince() {
+//        spnHospital.isEnabled = false
+//
+//
+//        var arrProvice = if (ConfigServer.instance.arrayProvince.size < 0) {
+//            ApiCenterUtil.onGetProvice(this)
+//        } else {
+//            ConfigServer.instance.arrayProvince
+//        }
+//
+//        arrHospitalProvince = arrProvice
+//        arrHospitalProvinceName = arrProvice.map {
+//            it.provinceNameTh
+//        } as MutableList
+//
+//        if (arrHospitalProvinceName.size > 0) {
+//            arrHospitalProvinceName.add(0, getString(R.string.select_hospital_province))
+//
+//            var adapter = ArrayAdapter<String>(context, R.layout.spinner_item_province, arrHospitalProvinceName)
+//            spnProviceHospital.adapter = adapter
+//
+//
+//            model?.provinceHospitalId?.let { id ->
+//                if (id > 0) {
+//                    spnProviceHospital.setSelection(id)
+//                }
+//            }
+//
+//
+//            spnProviceHospital.setOnItemSelectedListener(
+//                    object : AdapterView.OnItemSelectedListener {
+//                        override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+//
+//                            if (position > 0) {
+//                                loading.visibility = View.VISIBLE
+//                                hosProviceId = arrHospitalProvince[position - 1].provinceId
+//
+//
+//                                callApi(APIService.instance.requestHospitalbyProvince(hosProviceId).subscribe({ res: Response<HospitalbyProvinceModel>? ->
+//                                    var res = res?.body()
+//                                    var errorCode = Integer.parseInt(res!!.head.errorCode)
+//                                    if (errorCode == 0) {
+////                                PatienInfoScreen.getProgressInfoScreeNHide()
+//                                        arrHospital = res.body
+//                                        hospitalnameString.clear()
+//                                        hospitalnameString.add(getString(R.string.select_hospital))
+//                                        arrHospital.map { model ->
+//                                            hospitalnameString.add(model.hospital)
+//                                        }
+//                                        if (hospitalnameString.size > 1) {
+//
+//                                            spnHospital.isEnabled = true
+//                                            var adapterCity = ArrayAdapter(context, R.layout.spinner_item_province, hospitalnameString)
+//                                            spnHospital.adapter = adapterCity
+//
+//                                            model?.hospitalName?.let { name ->
+//                                                spnHospital.setSelection(hospitalnameString.indexOf(name))
+//                                            }
+//                                            model?.hospitalId?.let { id ->
+//                                                Idhospital = id
+//
+//                                            }
+//
+//                                            spnHospital.setOnItemSelectedListener(
+//                                                    object : AdapterView.OnItemSelectedListener {
+//                                                        override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+//                                                            if (position > 0) {
+//                                                                Idhospital = arrHospital.let {
+//                                                                    it[position - 1].hospitalID
+//                                                                }
+//                                                            } else {
+//                                                                Idhospital = 0
+//                                                            }
+//                                                        }
+//
+//                                                        override fun onNothingSelected(p0: AdapterView<*>?) {
+//
+//                                                        }
+//
+//                                                    })
+//                                        } else {
+//                                            hospitalnameString.clear()
+//                                            hospitalnameString.add(getString(R.string.select_hospital))
+//                                            var adapterDistrict = ArrayAdapter<String>(context, R.layout.spinner_item_province, hospitalnameString)
+//                                            spnHospital.adapter = adapterDistrict
+//                                            spnHospital.isEnabled = false
+//                                        }
+//
+//                                    }
+//                                    loading.visibility = View.GONE
+//                                }, { e ->
+//                                    loading.visibility = View.GONE
+//                                    //                            PatienInfoScreen.getProgressInfoScreeNHide()
+//                                    DialogBase(context).DialogSimple("แจ้งเตือน", getString(R.string.error_api49), object : DialogBase.OnClickDialogSimple {
+//                                        override fun onClickOK() {
+//
+//                                        }
+//
+//
+//                                    })
+//
+//                                    Logging.e(TAG + " Respond error", e.toString())
+//
+//                                }))
+//                            } else {
+//                                hospitalnameString.clear()
+//                                hospitalnameString.add(getString(R.string.select_hospital))
+//                                var adapterDistrict = ArrayAdapter<String>(context, R.layout.spinner_item_province, hospitalnameString)
+//                                spnHospital.adapter = adapterDistrict
+//                                spnHospital.isEnabled = false
+//                                hosProviceId = 0
+//                            }
+//                        }
+//
+//                        override fun onNothingSelected(p0: AdapterView<*>?) {
+//
+//
+//                        }
+//
+//                    })
+//
+//        }
+//    }
+
+
+    private fun initDob() {
+
+        datePick = accountDetailBody?.birthday?.let {
+            if (it.isEmpty())
+                ""
+            else
+                DateUtil.convertDateFormat(it, 0, 543)
+        } ?: run {
+            ""
+        }
+
+        txtDobProfile.setOnClickListener({
+            val c = Calendar.getInstance()
+            var realmonth = c.get(Calendar.MONTH) + 1
+            val curDate = c.get(Calendar.DAY_OF_MONTH).toString() + "-" + realmonth + "-" + c.get(Calendar.YEAR)
+            var date = if (accountDetailBody?.birthday.isNullOrEmpty()) curDate else accountDetailBody?.birthday
+
+
+            val dateArray = date?.split("-")
+
+
+            yearPick = dateArray!![2].toInt()
+            monthPick = dateArray[1].toInt()
+            dayPick = dateArray[0].toInt()
+
+            var cal = Calendar.getInstance()
+
+            val dpd = DatePickerDialog(activity, DatePickerDialog.OnDateSetListener { view, year, monthOfYear, dayOfMonth ->
+                // Display Selected date in textbox
+                cal.set(Calendar.YEAR, year)
+                cal.set(Calendar.MONTH, monthOfYear)
+                cal.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+
+                val myFormat = "dd MMMM yyyy" // mention the format you need
+                val sdf = SimpleDateFormat(myFormat, Locale.US)
+                txtDobProfile.text = sdf.format(cal.time)
+
+                yearPick = year + 543
+                monthPick = monthOfYear + 1
+                dayPick = dayOfMonth
+                datePick = "$dayPick-$monthPick-$yearPick"
+
+            }, yearPick, monthPick - 1, dayPick)
+
+
+            dpd.show()
+
+        })
+    }
+
+
+    private fun initCareer() {
+
+        showProgressbar()
+        viewModel.requescareerViewmodel()
+        viewModel.careerModel.observe(viewLifecycleOwner, androidx.lifecycle.Observer { careerModel ->
+
+            var res = careerModel.head
+            var errorCode = Integer.parseInt(res!!.errorCode)
+
+            when (errorCode) {
+                0 -> {
+                    hideProgressbar()
+                    Log.e("careerModel", careerModel.toString())
+
+                    var arrAptitude = careerModel?.body
+                    arrAptitude.let {
+                        val aptitudeArrayList = it
+
+                        arrCareerString.clear()
+                        arrCareerString.add(getString(R.string.selete_career))
+                        aptitudeArrayList?.map {
+                            arrCareerString.add(it.name_career!!)
+                        }
+
+
+                        var adapter = ArrayAdapter<String>(context, R.layout.spinner_item_province, arrCareerString)
+
+                        spnCareer.adapter = adapter
+
+                        accountDetailBody?.career_name?.let { career_name ->
+                            spnCareer.setSelection(arrCareerString.indexOf(career_name))
+                        }
+                        accountDetailBody?.careerId?.let { id ->
+                            careerID = id
+                        }
+
+                        spnCareer.setOnItemSelectedListener(
+                                object : AdapterView.OnItemSelectedListener {
+                                    override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+
+                                        Log.e("position careerID", position.toString())
+                                        aptitudeArrayList?.let {
+                                            if (position > 0) {
+                                                careerID = it[position - 1].id_career!!
+                                                Log.e("careerID", careerID.toString())
+                                                initAptitude(careerID)
+
+                                            } else {
+                                                careerID = 0
+                                                initAptitude(0)
+                                            }
+
+                                        }
+                                    }
+
+                                    override fun onNothingSelected(p0: AdapterView<*>?) {
+
+                                    }
+
+                                })
+                    }
+
+                }
+                else -> {
+
+                    hideProgressbar()
+                    dialog?.DialogSimple("แจ้งเตือน", getString(R.string.error_api43), object : DialogBase.OnClickDialogSimple {
+                        override fun onClickOK() {
+
+                        }
+                    })
+                }
+
+
+            }
+        })
+
+
+        viewModel.error.observe(viewLifecycleOwner, androidx.lifecycle.Observer {
+
+            hideProgressbar()
+            dialog?.DialogSimple("แจ้งเตือน", getString(R.string.error_api44), object : DialogBase.OnClickDialogSimple {
+                override fun onClickOK() {
+
+
+                }
+            })
+        })
+
+    }
+
+
+    private fun initAptitude(careerID: Int) {
+        Log.e("careerID aptitudeModel check", careerID.toString())
+        viewModel.requesAptitudeViewmodel(careerID)
+        viewModel.aptitudeModel.observe(viewLifecycleOwner, androidx.lifecycle.Observer { aptitudeModel ->
+
+            //            val gson = Gson()
+//            val itemType = object : TypeToken<ResponseAptitdeMockup>() {}.type
+//            var aptitudeModeldata = gson.fromJson<ResponseAptitdeMockup>(aptitudeModel, itemType) as ResponseAptitdeMockup
+////
+//
+
+            // Log.e("careerID arrAptitudeStringBody",aptitudeModel.bODY.toString())
+
+
+            var res = aptitudeModel.head
+            var errorCode = Integer.parseInt(res!!.errorCode)
+
+
+            if (arrAptitude != null) {
+                arrAptitude!!.clear()
+            }
+
+            arrAptitude = aptitudeModel?.body
+
+            arrAptitude.let {
+                // val aptitudeArrayList = it
+                var arrAptitudeString = ArrayList<String>()
+
+                // arrAptitudeString.clear()
+                arrAptitudeString.add(getString(R.string.selete_aptitude))
+                //  aptitudeArrayList?.map {
+                it?.forEach {
+                    arrAptitudeString.add(it?.aptitudeName!!)
+                }
+
+                var adapter = ArrayAdapter<String>(context, R.layout.spinner_item_province, arrAptitudeString)
+                spnAptitude.adapter = adapter
+
+                Log.e(" accountDetailBody?.aptitudeNameID", accountDetailBody?.career_aptitude_id.toString())
+
+                // accountDetailBody?.aptitudeName?.let { aptitude ->
+
+                // spnAptitude.setSelection(arrAptitudeString.indexOf(aptitude))
+                // }
+
+
+                if (chekAptitude!!) {
+                    spnAptitude.setSelection(0)
+                    aptitudeeID = 0
+                } else {
+
+                    accountDetailBody?.career_aptitude_id?.let { id ->
+
+                        if (accountDetailBody?.career_aptitude_id == -1) {
+                            spnAptitude.setSelection(0)
+                            aptitudeeID = 0
+                        } else {
+                            Log.e("career_aptitude_idget", it.toString())
+                            aptitudeeID = id
+                            spnAptitude.setSelection(aptitudeeID)
+                        }
+
+                    }
+
+
+                }
+
+                spnAptitude.setOnItemSelectedListener(
+                        object : AdapterView.OnItemSelectedListener {
+                            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+                                it?.let {
+                                    if (position > 0) {
+                                        aptitudeeID = it[position - 1]?.aptitudeId!!
+
+                                        Log.e("aptitudeeIDKKK", aptitudeeID.toString())
+                                    } else {
+                                        aptitudeeID = -1
+                                    }
+
+                                }
+                                chekAptitude = true
+                            }
+
+                            override fun onNothingSelected(p0: AdapterView<*>?) {
+
+                            }
+
+                        })
+
+            }
+
+            /*  when (errorCode) {
+                   0 -> {
+
+                       var aptitudeArrayList : ArrayList<BODYItem>? = null
+
+                       aptitudeArrayList = aptitudeModel?.bODY as ArrayList<BODYItem>?
+
+                       var arrAptitude = aptitudeModel?.bODY
+                       arrAptitude.let {
+                          // val aptitudeArrayList = it
+
+
+                           arrAptitudeString = ArrayList<String>()
+                           arrAptitudeString.clear()
+                           arrAptitudeString.add(getString(R.string.selete_aptitude))
+                           //  aptitudeArrayList?.map {
+                           it?.forEach {
+                               arrAptitudeString.add(it?.aptitudeName!!)
+                           }
+
+                           Log.e("arrAptitudeString", arrAptitudeString.toString())
+                           // arrAptitudeString.add(it.aptitude_name)
+                           // }
+
+                           }
+
+                           var adapter = ArrayAdapter<String>(context, R.layout.spinner_item_province, arrAptitudeString)
+
+                           spnAptitude.adapter = adapter
+
+                           Log.e(" accountDetailBody?.aptitudeName", accountDetailBody?.aptitudeName)
+
+                           accountDetailBody?.aptitudeName?.let { aptitude ->
+
+                               spnAptitude.setSelection(arrAptitudeString.indexOf(aptitude))
+                           }
+                           accountDetailBody?.career_aptitude_id?.let { id ->
+                               aptitudeeID = id
+                           }
+
+                           spnAptitude.setOnItemSelectedListener(
+                                   object : AdapterView.OnItemSelectedListener {
+                                       override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+                                           aptitudeArrayList?.let {
+                                               if (position > 0) {
+                                                   aptitudeeID = it[position - 1]?.aptitudeId!!
+                                               } else {
+                                                   aptitudeeID = -1
+                                               }
+
+                                           }
+                                       }
+
+                                       override fun onNothingSelected(p0: AdapterView<*>?) {
+
+                                       }
+
+                                   })
+
+
+                   }
+                   else -> {
+                       dialog?.DialogSimple("แจ้งเตือน", getString(R.string.error_api43), object : DialogBase.OnClickDialogSimple {
+                           override fun onClickOK() {
+
+                           }
+                       })
+                   }
+
+
+               }*/
+        })
+
+
+        viewModel.erroraptitude.observe(viewLifecycleOwner, androidx.lifecycle.Observer {
+
+            Log.e("careerID arrAptitudeStringBody error ", it.toString())
+
+
+            dialog?.DialogSimple("แจ้งเตือน", getString(R.string.error_api44), object : DialogBase.OnClickDialogSimple {
+                override fun onClickOK() {
+
+
+                }
+            })
+        })
+
+
+        //
+
+
+    }
+
+    private fun getArraysex(): ArrayList<DataSex> {
+        var array = ArrayList<DataSex>()
+
+//        ConfigServer.instance.arraySex?.add(DataSex(0, getString(R.string.selete_sex)))
+        callApi(APIService.instance.requestSex()
+
+                .subscribe(
+                        { res: Response<SexModel>? ->
+                            var res = res?.body()
+                            var errorCode = Integer.parseInt(res!!.head.errorCode)
+                            if (errorCode == 0) {
+                                array.clear()
+                                array.add(DataSex(0, getString(R.string.selete_sex)))
+                                array.addAll(res.body.data)
+                                ConfigServer.instance.arraySex?.clear()
+                                ConfigServer.instance.arraySex?.addAll(array)
+
+
+                            }
+                        }, { e ->
+                    dialog.DialogSimple("แจ้งเตือน", getString(R.string.error_api51), object : DialogBase.OnClickDialogSimple {
+                        override fun onClickOK() {
+
+
+                        }
+                    })
+                    Logging.e(TAG + "Respond error", e.toString())
+
+                }))
+
+        return array
+    }
+
+
+    private fun initProvince() {
+
+        ConfigServer.instance.arrayProvince?.let {
+            secretProvinceArrayList = it
+            secretProvince.clear()
+            secretProvince.add(getString(R.string.select_province))
+            for (i in 0 until secretProvinceArrayList!!.size) {
+                secretProvince.add(secretProvinceArrayList[i].provinceNameTh)
+            }
+            var adapterProvince = ArrayAdapter<String>(context, R.layout.spinner_item_province, secretProvince)
+            spnProvince.adapter = adapterProvince
+        }
+        /**
+         * Province
+         */
+        accountDetailBody?.provinceNameTh?.let { provinceNameTh ->
+            spnProvince.setSelection(secretProvince.indexOf(provinceNameTh))
+        }
+        accountDetailBody?.provinceId?.let { id ->
+            IdProvince = id
+        }
+        spnProvince.setOnItemSelectedListener(
+                object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+                        if (position > 0) {
+                            IdProvince = secretProvinceArrayList!![position - 1].provinceId
+                        } else {
+                            IdProvince = 0
+                        }
+
+                    }
+
+                    override fun onNothingSelected(p0: AdapterView<*>?) {
+
+
+                    }
+
+                })
+
+
+    }
+
+//    private fun initUniversity() {
+//
+//        callApi(APIService.instance.requestUniversity()
+//                .subscribe({ res: Response<UniversityModel>? ->
+//                    var res = res?.body()
+//
+//                    var errorCode = res?.head?.errorCode?.toInt()
+//                    when (errorCode) {
+//                        0 -> {
+//                            var arrUniversity = res?.body
+//                            arrUniversity.let {
+//                                val universityArrayList = it
+//                                universityString.clear()
+//                                universityString.add(getString(R.string.select_university))
+//                                universityArrayList?.map {
+//                                    universityString.add(it.name)
+//                                }
+//
+//
+//                                var adapter = ArrayAdapter<String>(context, R.layout.spinner_item_province, universityString)
+//                                spnUniversity.adapter = adapter
+//
+//                                model?.universityName?.let { name ->
+//                                    spnUniversity.setSelection(universityString.indexOf(name))
+//                                }
+//                                model?.universityId?.let { id ->
+//                                    IdUniversity = id
+//                                }
+//                                spnUniversity.setOnItemSelectedListener(
+//                                        object : AdapterView.OnItemSelectedListener {
+//                                            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+//
+//                                                if (position > 0) {
+//                                                    arrUniversity?.let {
+//                                                        IdUniversity = it[position - 1].id
+//                                                    }
+//                                                } else {
+//                                                    IdUniversity = 0
+//                                                }
+//
+//                                            }
+//
+//                                            override fun onNothingSelected(p0: AdapterView<*>?) {
+//
+//                                            }
+//
+//                                        })
+//                            }
+//                        }
+//                    }
+//                },
+//                        { e ->
+//
+//                            dialog.DialogSimple("แจ้งเตือน", getString(R.string.error_api52), object : DialogBase.OnClickDialogSimple {
+//                                override fun onClickOK() {
+//
+//
+//                                }
+//                            })
+//
+//                        }))
+//
+//    }
+
+
+    /* fun setObj(model: AccountDetailBody?) {
+         model?.let {
+
+
+             it.name?.let { name ->
+                 edtName.setText(name)
+             }
+
+             it.surename?.let { surename ->
+                 edtLastName.setText(surename)
+             }
+
+             it.idCard?.let { idCard ->
+                 edtCardId.setText(idCard)
+             }
+
+
+             it.birthday?.let { birthday ->
+                 if (!birthday.isEmpty()) {
+                     txtDobProfile.text = (DateUtil.convertDateFormatformServer(birthday))
+                 } else {
+                     txtDobProfile.hint = getString(R.string.birth)
+                 }
+
+
+             }
+
+             it.description?.let { description ->
+                 edtComment.setText(description)
+             }
+             it.packageId?.let { listPackageId ->
+                 IdPackage = JSONArray(listPackageId)
+             }
+
+           *//*  if (!("").equals(it.lat) && !("").equals(it.lng)) {
+                try {
+
+
+                    lat = it.lat
+                    lng = it.lng
+                    var geocoder = Geocoder(this.context, Locale.getDefault())
+                    var addresses = geocoder.getFromLocation(it.lat.toDouble(), it.lng.toDouble(), 1);
+                    if (addresses.size > 0) {
+                        addresses[0]?.let {
+                            tvDetailPlaceService.text = (
+                                    if (it.thoroughfare == null) "" else {
+                                        it.thoroughfare + ", "
+                                    }
+                                            + if (it.subAdminArea == null) "" else {
+                                        it.subAdminArea + ", "
+                                    }
+                                            + if (it.subLocality == null) "" else {
+                                        it.subLocality + ", "
+                                    }
+                                            + if (it.postalCode == null) "" else {
+                                        it.postalCode
+                                    }
+                                    )
+                        }
+
+                    } else {
+                        tvDetailPlaceService.text = getString(R.string.place_service)
+                    }
+                } catch (e: IOException) {
+                    tvDetailPlaceService.text = getString(R.string.place_error)
+
+                }
+            } else {
+                tvDetailPlaceService.text = getString(R.string.place_service)
+            }*//*
+
+
+            it.pictureName?.let { imagePath ->
+                if (imagePath.isEmpty()) {
+                    imgBaseProfile = null
+
+                    imgProfile.setImageDrawable(ContextCompat.getDrawable(this@TeleRegisterScreen.context!!, R.drawable.ic_add_profile))
+                } else {
+                    UpdateLogic {
+                        imgBaseProfile = ImageUtil.BitMapformUrl(ConfigServer.instance.accountProfilePathImage + imagePath, this@TeleRegisterScreen.context!!)
+
+                    }
+
+                    Glide.with(this.context!!).load(ConfigServer.instance.accountProfilePathImage + imagePath)
+                            .apply(ImageUtil.getImageCirclePersonnalProfile())
+                            .into(imgProfile)
+                }
+
+            }
+
+
+
+            it.pictureCert?.let { picture ->
+                UpdateLogic {
+                    imgBaseCer = ImageUtil.BitMapformUrl(ConfigServer.instance.certNursePath + picture, context)
+                    UpdateUI {
+                        enableTextFileCer(imgBaseCer ?: ImageUtil.DefaultBitmapNotImage(context))
+                    }
+                }
+
+            }
+
+            it.packageId?.let { arrPackage ->
+                arrPackageId = arrPackage
+                if (arrPackage.size == 0) {
+                    this@TeleRegisterScreen.tvPacket.text = ""
+                    this@TeleRegisterScreen.tvPacket.hint = getString(R.string.select_package)
+                } else {
+                    this@TeleRegisterScreen.tvPacket.text = getString(R.string.select) + " ${arrPackage.size} " + getString(R.string.title_package)
+                }
+
+
+            }
+
+
+        }
+    }*/
+
+    private fun enableTextFileCer(pictureNme: Bitmap) {
+        if (!pictureNme.equals(MsgProperties.DEFUALT_NAME_CERTIFICATE) && pictureNme != null) {
+            tvCertificateProfile.setCompoundDrawablesWithIntrinsicBounds(null, null, ContextCompat.getDrawable(context!!, R.drawable.ic_circle_true), null)
+            tvCertificateProfile.text = getString(R.string.certificate)
+            imgCertificate.setImageResource(R.drawable.ic_certificate_green)
+            imgCertificate.setOnClickListener({
+                DialogBase(context).DialogShowImage(pictureNme
+                        , object : DialogBase.OnClickDialogSimple {
+                    override fun onClickOK() {
+
+                    }
+                })
+            })
+        } else {
+            tvCertificateProfile.setCompoundDrawablesWithIntrinsicBounds(null, null, ContextCompat.getDrawable(context!!, R.drawable.ic_circle_false), null)
+            tvCertificateProfile.hint = getString(R.string.certificate)
+            imgCertificate.setImageResource(R.drawable.ic_certificate_gray)
+            imgCertificate.setOnClickListener(null)
+        }
+    }
+
+
+    /**
+     * register
+     */
+    private fun onUpdateAccountAPI(json: String) {
+        showProgressbar()
+
+
+        val body: RequestBody = RequestBody.create(MediaType.parse("application/json"), json)
+
+        //val requestBody = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), innitJsonRegister())
+        viewModel.requesUpdateAccountViewModle(body)
+
+
+        viewModel.resUpdateAccount.observe(viewLifecycleOwner, androidx.lifecycle.Observer {
+
+            hideProgressbar()
+
+
+            dialog.DialogSimple(getString(R.string.finish_alert), getString(R.string.update_finish), object : DialogBase.OnClickDialogSimple {
+                override fun onClickOK() {
+                    goback(false)
+                    invoker?.invoke("")
+                }
+            })
+        })
+
+        viewModel.errorUpdateAccount.observe(viewLifecycleOwner, androidx.lifecycle.Observer {
+
+            hideProgressbar()
+        })
+
+    }
+
+    private fun initListCompany() {
+
+        showProgressbar()
+        callApi(APIService.instance.requestListCompany()
+
+                .subscribe({ res: Response<ListCompanyModel>? ->
+                    var res = res?.body()
+                    var errorCode = Integer.parseInt(res!!.head.errorCode)
+                    onProgress.visibility = View.GONE
+                    when (errorCode) {
+                        0 -> {
+
+                            hideProgressbar()
+                            var arrListCompany = res?.body
+                            arrListCompany.let {
+                                val companyArrayList = it
+
+                                arrLictCompanyString.clear()
+                                arrLictCompanyString.add(getString(R.string.selete_company))
+                                companyArrayList?.map {
+                                    arrLictCompanyString.add(it.name)
+                                }
+
+                                var adapter = ArrayAdapter<String>(context, R.layout.spinner_item_province, arrLictCompanyString)
+                                spnPartner.adapter = adapter
+//                                accountDetailBody?.nameCompany?.let { nameCompany ->
+//                                    spnPartner.setSelection(arrLictCompanyString.indexOf(nameCompany))
+//                                }
+//                                accountDetailBody?.companyID?.let { id ->
+//                                    companyID = id
+//                                }
+
+                                if (chekcompany!!) {
+                                    spnPartner.setSelection(0)
+                                    aptitudeeID = 0
+                                } else {
+
+                                    accountDetailBody?.companyID?.let { id ->
+                                        Log.e("companyID", id.toString())
+                                        if (accountDetailBody?.companyID == -1) {
+                                            spnPartner.setSelection(0)
+                                            companyID = 0
+                                        } else {
+                                            Log.e("career_aptitude_idget", it.toString())
+                                            companyID = id
+                                            spnPartner.setSelection(companyID)
+                                        }
+
+                                    }
+                                }
+
+                                spnPartner.setOnItemSelectedListener(
+                                        object : AdapterView.OnItemSelectedListener {
+                                            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+                                                companyArrayList?.let {
+                                                    if (position > 0) {
+                                                        Log.e("companyID", companyID.toString())
+                                                        companyID = it[position - 1].companyID
+
+                                                        if (companyID == 0) {
+                                                            checkboxServise.setBackgroundResource(R.drawable.ic_circle_false)
+                                                        }
+                                                        accountDetailBody?.companyID = companyID
+                                                        companyFlag = 1
+                                                    } else {
+                                                        companyFlag = 0
+                                                        companyID = 0
+                                                    }
+
+                                                }
+
+                                                chekcompany = true
+                                            }
+
+                                            override fun onNothingSelected(p0: AdapterView<*>?) {
+
+                                            }
+
+                                        })
+                            }
+
+                            Log.d("dddderrorCode", "" + errorCode.toString())
+                        }
+                        else -> {
+
+                            hideProgressbar()
+                            dialog.DialogSimple(getString(R.string.noti_alert), getString(R.string.error_api57), object : DialogBase.OnClickDialogSimple {
+                                override fun onClickOK() {
+
+
+                                }
+                            })
+                        }
+
+
+                    }
+                },
+                        { e ->
+                            //
+                            //
+                            //                            onProgress.visibility = View.GONE
+
+                            hideProgressbar()
+                            dialog.DialogSimple("แจ้งเตือน", getString(R.string.error_api58), object : DialogBase.OnClickDialogSimple {
+                                override fun onClickOK() {
+
+
+                                }
+                            })
+
+                        }))
+
+    }
+
+    private fun activeAccountAPI() {
+
+        callApi(APIService.instance.activeAccountAPI()
+                .subscribe({ res: Response<ResponseBody>? ->
+
+                    var res = res?.body()?.string()
+                    var header = JsonUtil.instance.getErrorCode(res)
+
+                    when (header?.errorCode!!.toInt()) {
+                        0 -> {
+                            var codeActive = ConfigShare.getShareConfig(ConfigShare.codeActive)
+                            if (codeActive == 0) {
+                                checkAccountAPI()
+                            } else if (codeActive == 1 || codeActive == 2) {
+                                dialog.DialogSimple(getString(R.string.finish_alert), getString(R.string.update_finish), object : DialogBase.OnClickDialogSimple {
+                                    override fun onClickOK() {
+                                        goback(false)
+                                    }
+                                })
+                            }
+                        }
+                        else -> {
+                            dialog.DialogSimple(getString(R.string.noti_alert), getString(R.string.error_api55), object : DialogBase.OnClickDialogSimple {
+                                override fun onClickOK() {
+
+
+                                }
+                            })
+                        }
+
+
+                    }
+                },
+                        { e ->
+
+                            dialog.DialogSimple(getString(R.string.noti_alert), getString(R.string.error_api56), object : DialogBase.OnClickDialogSimple {
+                                override fun onClickOK() {
+
+
+                                }
+                            })
+
+                        }))
+
+    }
+
+    private fun checkAccountAPI() {
+
+        callApi(APIService.instance.checkAccountAPI()
+
+                .subscribe({ res: Response<CheckAccountModel>? ->
+                    var res = res?.body()
+                    var errorCode = Integer.parseInt(res!!.head.errorCode)
+                    onProgress.visibility = View.GONE
+                    when (errorCode) {
+                        0 -> {
+                            ConfigShare.addShareConfig(ConfigShare.codeActive, res!!.body.active)
+                            dialog.DialogSimple(getString(R.string.finish_alert), getString(R.string.register_complete), object : DialogBase.OnClickDialogSimple {
+                                override fun onClickOK() {
+                                    goback(false)
+                                }
+                            })
+                        }
+                        else -> {
+                            dialog.DialogSimple(getString(R.string.noti_alert), getString(R.string.error_api57), object : DialogBase.OnClickDialogSimple {
+                                override fun onClickOK() {
+
+
+                                }
+                            })
+                        }
+
+
+                    }
+                },
+                        { e ->
+                            onProgress.visibility = View.GONE
+                            dialog.DialogSimple("แจ้งเตือน", getString(R.string.error_api58), object : DialogBase.OnClickDialogSimple {
+                                override fun onClickOK() {
+
+
+                                }
+                            })
+
+                        }))
+
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        when (requestCode) {
+            /* PLACE_PICKER_REQUEST -> {
+                 if (resultCode == RESULT_OK) {
+                     val place = PlacePicker.getPlace(context, data);
+                     lat = place.getLatLng().latitude.toString()
+                     lng = place.getLatLng().longitude.toString()
+                     val address = place.getAddress().toString()
+                     //tvDetailPlaceService.text = (address)
+
+                 }
+             }*/
+            CAMERA -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    when (idResPicture) {
+                        imgProfile.id -> {
+                            imgBaseProfile = ImageUtil.onCameraResult(uriSavedImageProfile, this.context)
+                            imgBaseProfile = ImageUtil.rotateBitmap(imgBaseProfile, imgstring)
+//                            imgBaseProfile = imgBaseProfile?.let { ImageUtil.rotateBitmap(it, imgstring) }
+//
+                            Glide.with(this.context!!).load(imgBaseProfile)
+                                    .apply(ImageUtil.getImageCirclePersonnalProfile())
+                                    .into(imgProfile)
+                        }
+                        tvCertificateProfile.id -> {
+
+//                            var nameFile = ImageUtil.getFileMetaData(this.context!!, uriSavedImageCertificate)
+                            imgBaseCer = ImageUtil.onCameraResult(uriSavedImageCertificate, this.context!!)
+                            imgBaseCer = ImageUtil.rotateBitmap(imgBaseCer, imgstring)
+//                            var bmPicture = ImageUtil.onCameraResult(uriSavedImageCertificate, this.context)
+                            enableTextFileCer(imgBaseCer
+                                    ?: ImageUtil.DefaultBitmapNotImage(context))
+                        }
+                    }
+                }
+            }
+            GELLARY -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    when (idResPicture) {
+                        imgProfile.id -> {
+
+                            imgBaseProfile = ImageUtil.onGalleryResult(timeonGellaryProfile, data!!, activityMain)
+//                            imgBaseProfile = imgBaseProfile?.let { ImageUtil.rotateBitmap(it, data.data.toString()) }
+
+                            if (imgBaseProfile == null) {//แสดงรูปที่เลือก
+                                imgProfile.setImageResource(R.drawable.ic_add_profile)
+                            } else {
+                                Glide.with(this.context!!).load(imgBaseProfile)
+                                        .apply(ImageUtil.getImageCirclePersonnalProfile())
+                                        .into(imgProfile)
+                            }
+                        }
+                        tvCertificateProfile.id -> {
+                            imgBaseCer = ImageUtil.onGalleryResult(timeonGellaryCertificate, data!!, activityMain)
+                            enableTextFileCer(imgBaseCer
+                                    ?: ImageUtil.DefaultBitmapNotImage(context))
+
+                        }
+                    }
+
+
+                }
+            }
+        }
+    }
+
+    private fun innitJsonRegister(): String? {
+
+
+        var gson = Gson()
+        val map: HashMap<String, Any?> = hashMapOf(
+                "home_no" to "",
+                "province" to IdProvince,
+                "district" to accountDetailBody?.district,
+                "city" to accountDetailBody?.city,
+                "lat" to accountDetailBody?.lat,
+                "lng" to accountDetailBody?.lng,
+                "village" to "",
+                "name" to edtName.text.toString().trim(),
+                "surename" to edtLastName.text.toString().trim(),
+                "birthday" to datePick,
+                "sex" to accountDetailBody?.sex,
+                "picture" to ImageUtil.BitMapToString(imgBaseProfile),
+
+                "id_card" to edtCardId.text.toString().trim(),
+                "description" to edtComment.text.toString().trim(),
+                "price" to accountDetailBody?.price,
+                "unit" to accountDetailBody?.unit,
+                "hospital_id" to accountDetailBody?.hospitalId,
+                "aptitude" to accountDetailBody?.aptitudeName,
+                "type" to 1,
+                "picture_cert" to ImageUtil.BitMapToString(imgBaseCer),
+                "area" to 1,
+                "ot" to 0,
+                "university_id" to accountDetailBody?.universityId,
+                "package_id" to accountDetailBody?.packageId,
+                "companyID" to accountDetailBody?.companyID,
+
+                "place_woking" to edtLocton?.text.toString(),
+
+                "flag_consultant" to "${accountDetailBody?.flag_consultant}",
+
+                "company_flag" to "${accountDetailBody?.company_flag}",
+
+                "career" to careerID,
+                "aptitude_consultant" to aptitudeeID,
+                "consultant_detail" to edtAptituDetail.text.toString()
+        )
+
+        val mapmapDataData: HashMap<String, Any?> = hashMapOf("data" to map)
+
+
+        return gson.toJson(mapmapDataData)
+
+
+        /*  if (!("").equals(datePick) && IdProvince > 0
+                  && IdSex > 0
+                  && !("").equals(edtName.text.toString().trim())
+                  && !("".equals(edtLastName.text.toString().trim()))
+                  && !("").equals(edtCardId.text.toString().trim())
+                  && imgBaseProfile != null
+                  && (!lat.isEmpty() && !lng.isEmpty())
+                  && imgBaseCer != null
+  //                && hosProviceId > 0
+  //                && Idhospital > 0
+  //                && IdUniversity > 0
+                  && aptitudeeID >= 0) {
+              var dataJson = JSONObject()
+
+              dataJson.put("home_no", "")
+              dataJson.put("province", IdProvince)
+              dataJson.put("district", 0)
+              dataJson.put("city", 0)
+              dataJson.put("lat", lat)
+              dataJson.put("lng", lng)
+              dataJson.put("village", "")
+              dataJson.put("name", edtName.text.toString().trim())
+              dataJson.put("surename", edtLastName.text.toString().trim())
+              dataJson.put("birthday", datePick)
+              dataJson.put("sex", IdSex)
+              dataJson.put("picture", ImageUtil.BitMapToString(imgBaseProfile))
+              dataJson.put("id_card", edtCardId.text.toString().trim())
+              dataJson.put("description", edtComment.text.toString().trim())
+              dataJson.put("price", "")
+              dataJson.put("unit", 1)
+              dataJson.put("hospital_id", 0)
+              dataJson.put("aptitude", aptitudeeID)
+              dataJson.put("type", 1)
+              dataJson.put("picture_cert", ImageUtil.BitMapToString(imgBaseCer))
+              dataJson.put("area", 1)
+              dataJson.put("ot", 0)
+              dataJson.put("university_id", 0)
+              dataJson.put("package_id", IdPackage)
+              dataJson.put("company_flag", companyFlag)
+              dataJson.put("companyID", companyID)
+              var dataJsonObj = JSONObject()
+              dataJsonObj.put("data", dataJson)
+
+              return dataJsonObj.toString()
+          } else {
+
+
+              if (imgBaseProfile == null) {
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.profile_null), null)
+              } else if (IdSex == 0) {
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.sex_null), null)
+              } else if (("").equals(edtName.text.toString().trim())) {
+                  edtName.error = getString(R.string.input_please)
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.name_null), null)
+              } else if (("".equals(edtLastName.text.toString().trim()))) {
+                  edtLastName.error = getString(R.string.input_please)
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.surname_null), null)
+              } else if (IdProvince == 0) {
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.province_null), null)
+              } else if (("").equals(datePick)) {
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.birthday_null), null)
+              } else if (aptitudeeID < 0) {
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.nurse_type_null), null)
+              } else if (imgBaseCer == null) {
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.nurse_cer_null), null)
+              } else if (lat.isEmpty() && lng.isEmpty()) {
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.location_service_null), null)
+              } else if (("").equals(edtCardId.text.toString().trim())) {
+                  edtCardId.error = getString(R.string.input_please)
+                  DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.card_id_null), null)
+              }
+
+  //        } else if (IdUniversity == 0) {
+  //                            DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.education_null), null)
+  //            } else if (hosProviceId == 0) {
+  //                DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.hospital_province_null), null)
+  //            } else if (Idhospital == 0) {
+  //                DialogBase(context).DialogSimple(getString(R.string.noti_alert), getString(R.string.hospital_null), null)
+
+                  return null
+              }*/
+
+
+    }
+
+
+}
